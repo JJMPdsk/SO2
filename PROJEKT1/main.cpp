@@ -1,26 +1,28 @@
-//#include <iostream>
 #include <ncurses.h>
-//#include <string>
-//#include <cstdlib>
-//#include <ctime>
 #include "ball.h"
-//#include <thread>
 #include <vector>
 
 using namespace std;
 
-std::mutex mtx;
-int maxBallsCount = 10;
+mutex mtx;
+vector<thread> threads;
 
-void addThread(WINDOW *win, int y, int x, char c){
+void throwBall(WINDOW *win, int y, int x, char c){
     Ball * b = new Ball(win, y, x, c);
     b->run();
 }
 
-int main()
-{
-    std::srand(std::time(nullptr));
-    std::vector<std::thread> threads;
+void exitListener(){
+    while(running){
+        if(getch()==27) // if ESC pressed
+            running = false;
+    }
+}
+
+int main(){
+
+    srand(time(nullptr));
+    vector<thread> threads;
 
     /* NCURSES START */
     initscr();
@@ -33,8 +35,9 @@ int main()
     getmaxyx(stdscr, yMax, xMax);
 
     // create a window for out input
+    /* 20lines, 50cols, (yMax/2)-10 begin_y, 10 begin_x */
     WINDOW * playwin = newwin(20, 50, (yMax/2)-10, 10);
-    box(playwin, 0, 0);
+    box(playwin, 0, 0); // window*, vertical char, horizontal char
     refresh();
     wrefresh(playwin);
 
@@ -50,17 +53,19 @@ int main()
     init_pair(6, COLOR_WHITE, COLOR_BLACK);
     init_pair(7, COLOR_BLUE, COLOR_BLACK);
 
+    threads.push_back(thread(exitListener)); // create new thread for exit listener
+
 
     // ball thrower
-    for(int i = 0 ; i < maxBallsCount ; i++){
-        int delay = rand()%5+1; // lemme random time between each ball throw
-        threads.push_back(std::thread(addThread, playwin, yMax/3, xMax/3, 'o')); // create new thread for a new ball
-        this_thread::sleep_for(std::chrono::seconds(delay));
+    while(running){
+            int delay = rand()%4+1; // lemme random time between each ball throw
+            threads.push_back(thread(throwBall, playwin, yMax / 3, xMax / 3, 'o')); // create new thread for a new ball
+            this_thread::sleep_for(chrono::seconds(delay));
     }
 
 
     // wait for all threads to finish
-    for (std::thread &thread : threads)
+    for (thread &thread : threads)
         thread.join();
 
     endwin();

@@ -13,7 +13,6 @@ class Ball
 {
 public:
     Ball(WINDOW * win, int y, int x, char c);
-//    int getmv(); // user input
     void run(); // main simulation method
 
 private:
@@ -22,6 +21,7 @@ private:
     WINDOW * curwin;
     int direction;
     int colorPair;
+    int xLocOld, yLocOld;
 
     void display();
     /* MOVEMENT PURPOSE METHODS */
@@ -36,6 +36,8 @@ private:
     void mvdownright();
 
     void moveBall();
+
+    void eraseBall();
 };
 
 /* CTOR */
@@ -45,11 +47,14 @@ Ball::Ball(WINDOW *win, int y, int x, char c) {
     yLoc = y;
     xLoc = x;
 
+    xLocOld = xLoc;
+    yLocOld = yLoc;
+
     getmaxyx(curwin, yMax, xMax);
-    keypad(curwin, true);
     character = c;
 
     colorPair = rand() % 7 + 1; // gets 1/2/3/4/5
+
     do{
         direction = rand() % 8; // gets 0/1/2/3/4/5/6/7
 
@@ -71,6 +76,7 @@ Ball::Ball(WINDOW *win, int y, int x, char c) {
 
 void Ball::display() {
     std::lock_guard<std::mutex> guard(mtx);
+    mvwaddch(curwin, yLocOld, xLocOld, ' ');
     wattron(curwin, COLOR_PAIR(colorPair));
     mvwaddch(curwin, yLoc, xLoc, character);
     wattroff(curwin, COLOR_PAIR(colorPair));
@@ -80,8 +86,8 @@ void Ball::display() {
 /* MOVEMENT */
 
 void Ball::mvup() {
-    std::lock_guard<std::mutex> guard(mtx);
-    mvwaddch(curwin, yLoc, xLoc, ' ');
+    xLocOld = xLoc;
+    yLocOld = yLoc;
     yLoc--;
     if(yLoc < 1)
     {
@@ -91,8 +97,8 @@ void Ball::mvup() {
 }
 
 void Ball::mvdown() {
-    std::lock_guard<std::mutex> guard(mtx);
-    mvwaddch(curwin, yLoc, xLoc, ' ');
+    xLocOld = xLoc;
+    yLocOld = yLoc;
     yLoc++;
     if(yLoc > yMax-2)
     {
@@ -102,8 +108,8 @@ void Ball::mvdown() {
 }
 
 void Ball::mvleft() {
-    std::lock_guard<std::mutex> guard(mtx);
-    mvwaddch(curwin, yLoc, xLoc, ' ');
+    xLocOld = xLoc;
+    yLocOld = yLoc;
     xLoc--;
     if(xLoc < 1)
     {
@@ -113,19 +119,19 @@ void Ball::mvleft() {
 }
 
 void Ball::mvright() {
-    std::lock_guard<std::mutex> guard(mtx);
-    mvwaddch(curwin, yLoc, xLoc, ' ');
+    xLocOld = xLoc;
+    yLocOld = yLoc;
     xLoc++;
     if(xLoc > xMax-2)
     {
         xLoc = xMax-2;
-        direction = 3; // if can't go left any further, go right
+        direction = 3; // if can't go left any further, go left
     }
 }
 
 void Ball::mvupleft() {
-    std::lock_guard<std::mutex> guard(mtx);
-    mvwaddch(curwin, yLoc, xLoc, ' ');
+    xLocOld = xLoc;
+    yLocOld = yLoc;
     xLoc--;
     yLoc--;
 
@@ -141,8 +147,8 @@ void Ball::mvupleft() {
 }
 
 void Ball::mvdownleft() {
-    std::lock_guard<std::mutex> guard(mtx);
-    mvwaddch(curwin, yLoc, xLoc, ' ');
+    xLocOld = xLoc;
+    yLocOld = yLoc;
     xLoc--;
     yLoc++;
 
@@ -158,8 +164,8 @@ void Ball::mvdownleft() {
 }
 
 void Ball::mvdownright(){
-    std::lock_guard<std::mutex> guard(mtx);
-    mvwaddch(curwin, yLoc, xLoc, ' ');
+    xLocOld = xLoc;
+    yLocOld = yLoc;
     xLoc++;
     yLoc++;
 
@@ -175,8 +181,8 @@ void Ball::mvdownright(){
 }
 
 void Ball::mvupright(){
-    std::lock_guard<std::mutex> guard(mtx);
-    mvwaddch(curwin, yLoc, xLoc, ' ');
+    xLocOld = xLoc;
+    yLocOld = yLoc;
     xLoc++;
     yLoc--;
 
@@ -224,28 +230,6 @@ void Ball::moveBall(){
     }
 }
 
-//int Ball::getmv() {
-//    int choice = wgetch(curwin);
-//    switch(choice)
-//    {
-//        case KEY_UP:
-//            mvup();
-//            break;
-//        case KEY_DOWN:
-//            mvdown();
-//            break;
-//        case KEY_LEFT:
-//            mvleft();
-//            break;
-//        case KEY_RIGHT:
-//            mvright();
-//            break;
-//        default:
-//            break;
-//    }
-//    return choice;
-//}
-
 /* SIMULATION PURPOSE */
 
 void Ball::run() {
@@ -269,12 +253,16 @@ void Ball::run() {
         // after 15 "slows downs" - get rid of that ball
         if(i == 15){
             // get me that ball of my screen!
-            mvwaddch(curwin, yLoc, xLoc, ' ');
-            wrefresh(curwin);
+            eraseBall();
             return;
         }
-    }while(true);
+    }while(running);
 }
 
+void Ball::eraseBall() {
+    std::lock_guard<std::mutex> guard(mtx);
+    mvwaddch(curwin, yLoc, xLoc, ' ');
+    wrefresh(curwin);
+}
 
 #endif //PROJEKT1_BALL_H
